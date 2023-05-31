@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Lista de Tarefas</title>
+  <style>
+    /* Estilos CSS para a aplicação */
+    /* ... */
+  </style>
+</head>
+<body onload="loadTasks()">
+  <h1>Lista de Tarefas</h1>
+
+  <form id="task-form" onsubmit="event.preventDefault(); addTask();">
+    <input type="text" id="task-input" placeholder="Digite a tarefa" required>
+    <button type="submit">Adicionar</button>
+  </form>
+
+  <ul id="task-list">
+    <!-- As tarefas serão adicionadas dinamicamente aqui -->
+  </ul>
+
+  <div id="timer-container" style="display: none;">
+    <h2>Executando tarefa:</h2>
+    <p id="current-task"></p>
+    <p id="timer"></p>
+    <button onclick="completeTask()">Concluir</button>
+    <button onclick="stopTimer()">Parar</button>
+    <button onclick="skipToRest()">Ir para o Descanso</button>
+  </div>
+
+<script>
+// Variáveis globais
+var tasks = [];
+var currentIndex = 0;
+var timerInterval;
+var remainingSeconds = 0;
+
+// Função para carregar as tarefas do localStorage
+function loadTasks() {
+  tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+  displayTasks();
+}
+
+// Função para exibir as tarefas na lista
+function displayTasks() {
+  var taskList = document.getElementById("task-list");
+  taskList.innerHTML = "";
+
+  tasks.forEach(function(task) {
+    var listItem = document.createElement("li");
+    listItem.textContent = task.description;
+
+    var deleteButton = document.createElement("button");
+    deleteButton.textContent = "Excluir";
+    deleteButton.addEventListener("click", function() {
+      deleteTask(task.id);
+    });
+
+    var executeButton = document.createElement("button");
+    executeButton.textContent = "Executar";
+    executeButton.addEventListener("click", function() {
+      executeTask(task.id);
+    });
+
+    listItem.appendChild(deleteButton);
+    listItem.appendChild(executeButton);
+    taskList.appendChild(listItem);
+  });
+}
+
+// Função para adicionar uma tarefa à lista
+function addTask() {
+  var taskInput = document.getElementById("task-input");
+  var taskDescription = taskInput.value.trim();
+
+  if (taskDescription === "") {
+    alert("Digite a descrição da tarefa.");
+    return;
+  }
+
+  var task = {
+    id: Date.now(),
+    description: taskDescription
+  };
+
+  tasks.push(task);
+  localStorage.setItem("tasks", JSON.stringify(tasks));
+
+  displayTasks();
+  taskInput.value = "";
+}
+
+// Função para iniciar a execução de uma tarefa
+function executeTask(taskId) {
+  var taskIndex = tasks.findIndex(function(task) {
+    return task.id === taskId;
+  });
+
+  if (taskIndex !== -1) {
+    currentIndex = taskIndex;
+    var currentTask = tasks[currentIndex];
+
+    // Exibir a tarefa atual
+    var currentTaskElement = document.getElementById("current-task");
+    currentTaskElement.textContent = currentTask.description;
+
+    // Exibir o contador
+    var timerElement = document.getElementById("timer");
+    timerElement.textContent = formatTime(remainingSeconds || 15 * 60);
+
+    // Exibir o container do contador
+    var timerContainer = document.getElementById("timer-container");
+    timerContainer.style.display = "block";
+
+    // Iniciar o timer
+    remainingSeconds = remainingSeconds || 15 * 60;
+    timerInterval = setInterval(function() {
+      timerElement.textContent = formatTime(remainingSeconds);
+      remainingSeconds--;
+
+      if (remainingSeconds < 0) {
+        clearInterval(timerInterval);
+        timerElement.textContent = "00:00";
+        handleTaskCompletion();
+      }
+    }, 1000);
+  }
+}
+
+// Função para concluir uma tarefa
+function completeTask() {
+  clearInterval(timerInterval);
+  handleTaskCompletion();
+}
+
+// Função para parar o tempo
+function stopTimer() {
+  clearInterval(timerInterval);
+}
+
+// Função para pular para o descanso
+function skipToRest() {
+  clearInterval(timerInterval);
+  remainingSeconds = 2 * 60;
+  handleTaskCompletion();
+}
+
+// Função para pular uma tarefa
+function skipTask() {
+  clearInterval(timerInterval);
+  currentIndex++;
+  if (currentIndex >= tasks.length) {
+    currentIndex = 0;
+  }
+  executeTask(tasks[currentIndex].id);
+}
+
+// Função para lidar com a conclusão de uma tarefa
+function handleTaskCompletion() {
+  var currentTask = tasks[currentIndex];
+
+  // Remover a tarefa concluída da lista
+  tasks.splice(currentIndex, 1);
+
+  // Adicionar a tarefa concluída novamente no final da lista
+  tasks.push(currentTask);
+
+  // Atualizar o localStorage e exibir as tarefas
+  localStorage.setItem("tasks", JSON.stringify(tasks));
+  displayTasks();
+
+  // Reiniciar o índice se chegarmos ao final da lista
+  if (currentIndex >= tasks.length) {
+    currentIndex = 0;
+  }
+
+  // Verificar se há mais tarefas para executar
+  if (tasks.length > 0) {
+    executeTask(tasks[currentIndex].id);
+  } else {
+    // Se não houver mais tarefas, ocultar o contador
+    var timerContainer = document.getElementById("timer-container");
+    timerContainer.style.display = "none";
+  }
+}
+
+// Função para formatar o tempo no formato "mm:ss"
+function formatTime(seconds) {
+  var minutes = Math.floor(seconds / 60);
+  var remainingSeconds = seconds % 60;
+  return `${minutes.toString().padStart(2, "0")}:${remainingSeconds.toString().padStart(2, "0")}`;
+}
+
+// Call the executeTask() function to start the task execution
+executeTask();
+
+</script>
+</body>
+</html>
